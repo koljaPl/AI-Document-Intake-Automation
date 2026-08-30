@@ -107,13 +107,13 @@ class IntakeCache:
             )
             conn.commit()
 
-    def get_existing_invoices(self) -> set[tuple[str, str]]:
-        """Retrieve existing (supplier_name, invoice_number) pairs for deduplication."""
-        existing: set[tuple[str, str]] = set()
+    def get_existing_invoices(self) -> dict[tuple[str, str], set[str]]:
+        """Retrieve existing (supplier_name, invoice_number) -> set of file_hashes for deduplication."""
+        existing: dict[tuple[str, str], set[str]] = {}
         with self._get_connection() as conn:
             cur = conn.execute(
                 """
-                SELECT supplier_name, invoice_number 
+                SELECT supplier_name, invoice_number, file_hash 
                 FROM processed_documents 
                 WHERE status IN ('OK', 'FLAGGED')
                   AND supplier_name IS NOT NULL 
@@ -123,8 +123,9 @@ class IntakeCache:
             for row in cur.fetchall():
                 supp = (row["supplier_name"] or "").strip().lower()
                 inv = (row["invoice_number"] or "").strip().lower()
+                h = row["file_hash"]
                 if supp and inv:
-                    existing.add((supp, inv))
+                    existing.setdefault((supp, inv), set()).add(h)
         return existing
 
     def get_cache_stats(self) -> dict[str, int]:

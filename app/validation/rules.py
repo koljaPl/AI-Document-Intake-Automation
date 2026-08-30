@@ -185,16 +185,26 @@ class InvoiceValidator:
             cleaned_supplier_name.lower(),
             cleaned_invoice_number.lower(),
         )
-        if existing_invoices is not None and dedup_key in existing_invoices:
-            return None, DocumentException(
-                file_name=file_name,
-                file_hash=file_hash,
-                issue_type="DUPLICATE_INVOICE",
-                details=(
-                    f"Invoice number '{cleaned_invoice_number}' from supplier "
-                    f"'{cleaned_supplier_name}' already exists in batch or database"
-                ),
-            )
+        if existing_invoices is not None:
+            is_dup = False
+            if isinstance(existing_invoices, dict):
+                # Mapping of (supplier, invoice_number) -> set of file_hashes
+                known_hashes = existing_invoices.get(dedup_key, set())
+                # Only a duplicate if found in a DIFFERENT file/hash
+                is_dup = any(h != file_hash for h in known_hashes)
+            elif isinstance(existing_invoices, set):
+                is_dup = dedup_key in existing_invoices
+
+            if is_dup:
+                return None, DocumentException(
+                    file_name=file_name,
+                    file_hash=file_hash,
+                    issue_type="DUPLICATE_INVOICE",
+                    details=(
+                        f"Invoice number '{cleaned_invoice_number}' from supplier "
+                        f"'{cleaned_supplier_name}' already exists in batch or database"
+                    ),
+                )
 
         # Rule 8: Parse Optional Due Date & Review Flags
         status = "OK"

@@ -58,11 +58,11 @@ class PDFExtractor:
         extracted_text_pages: list[str] = []
         page_count = 0
 
-        # Try PyMuPDF (fitz) first for speed and layout accuracy
+        # Try PyMuPDF first for speed and layout accuracy
         try:
-            import fitz  # PyMuPDF
+            import pymupdf
 
-            with fitz.open(path) as doc:
+            with pymupdf.open(path) as doc:
                 page_count = len(doc)
                 if page_count == 0:
                     raise PDFExtractionError(
@@ -72,7 +72,7 @@ class PDFExtractor:
                 for page in doc:
                     text = page.get_text() or ""
                     extracted_text_pages.append(text)
-        except (ImportError, Exception) as fitz_err:
+        except (ImportError, Exception) as pymupdf_err:
             # Fallback to pypdf
             try:
                 from pypdf import PdfReader
@@ -91,7 +91,7 @@ class PDFExtractor:
                 raise
             except Exception as pypdf_err:
                 raise PDFExtractionError(
-                    f"Failed to read PDF {path.name}: {pypdf_err} (fitz error: {fitz_err})",
+                    f"Failed to read PDF {path.name}: {pypdf_err} (pymupdf error: {pymupdf_err})",
                     issue_type="UNREADABLE_PDF",
                 ) from pypdf_err
 
